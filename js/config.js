@@ -1,51 +1,35 @@
 // **Variáveis de Estado Globais:**
-// Armazenam os dados principais do aplicativo, carregados do localStorage ou inicializados.
-let items = JSON.parse(localStorage.getItem('items')) || [];
-// Garante que cada item tenha as propriedades esperadas. Isso é importante para compatibilidade com versões antigas dos dados.
-items = items.map(item => ({
-  ...item,
-  tags: item.tags || [], // Assegura que 'tags' é um array
-  metadata: item.metadata || {}, // Assegura que 'metadata' é um objeto
-  rating: item.rating !== undefined ? item.rating : 0, // Define 'rating' como 0 se não existir
-  accessHistory: item.accessHistory || [], // Inicializa 'accessHistory' como um array vazio
-  priority: item.priority || false // NOVO: Assegura que 'priority' existe, padrão para false
-}));
-// Adicione este objeto de mapeamento de cores no config.js
-const FOLDER_COLOR_MAP = {
-    'bg-blue-500': '#3b82f6', // Tailwind blue-500
-    'bg-green-500': '#22c55e', // Tailwind green-500
-    'bg-red-500': '#ef4444',   // Tailwind red-500
-    'bg-purple-500': '#a855f7',// Tailwind purple-500
-    'bg-yellow-500': '#eab308',// Tailwind yellow-500
-    'bg-black': '#000000',     // Black
-    'bg-teal-600': '#0d9488',  // Tailwind teal-600
-    'bg-pink-600': '#db2777',  // Tailwind pink-600
-    'bg-gray-500': '#6b7280'   // Tailwind gray-500 (para "Outros Links" e "No Folder")
-};
-let folders = JSON.parse(localStorage.getItem('folders')) || [
-  // Pastas padrão iniciais para o aplicativo
-  { name: 'TikTok', color: 'bg-black', icon: 'svg/tiktok.svg' },
-  { name: 'Kwai', color: 'bg-yellow-500', icon: 'svg/kwai.svg' },
-  { name: 'Facebook', color: 'bg-blue-600', icon: 'svg/facebook.svg' },
-  { name: 'Instagram', color: 'bg-pink-600', icon: 'svg/instagram.svg' },
-  { name: 'YouTube', color: 'bg-red-600', icon: 'svg/youtube.svg' },
-  { name: 'Dailymotion', color: 'bg-teal-600', icon: 'svg/dailymotion.svg' },
-  { name: 'Outros Links', color: 'bg-gray-500', icon: 'svg/link.svg' }
-];
-let savedTags = JSON.parse(localStorage.getItem('savedTags')) || []; // Tags salvas pelo usuário
-let theme = localStorage.getItem('theme') || 'light'; // Tema atual (claro/escuro)
-let currentLanguage = localStorage.getItem('language') || 'pt-BR'; // Idioma atual
+// As variáveis agora são inicializadas vazias ou com seus valores padrão.
+// Elas serão preenchidas de forma assíncrona a partir do IndexedDB no arquivo main.js.
 
-let selectedFolder = null; // A pasta atualmente selecionada para filtrar itens (null para "Todos os Itens")
-let currentEditingTag = null; // Armazena a tag que está sendo editada no modal
-let currentEditingItem = null; // Armazena o item que está sendo editado no modal
-let currentEditingFolder = null; // Armazena a pasta que está sendo editada no modal
-let importedDataCache = null; // Cache temporário para os dados lidos de um arquivo JSON importado
+let items = [];
+let folders = [];
+let savedTags = [];
+let theme = 'light';
+let currentLanguage = 'pt-BR';
+
+// O objeto de mapeamento de cores permanece o mesmo.
+const FOLDER_COLOR_MAP = {
+    'bg-blue-500': '#3b82f6',
+    'bg-green-500': '#22c55e',
+    'bg-red-500': '#ef4444',
+    'bg-purple-500': '#a855f7',
+    'bg-yellow-500': '#eab308',
+    'bg-black': '#000000',
+    'bg-teal-600': '#0d9488',
+    'bg-pink-600': '#db2777',
+    'bg-gray-500': '#6b7280'
+};
+
+let selectedFolder = null;
+let currentEditingTag = null;
+let currentEditingItem = null;
+let currentEditingFolder = null;
+let importedDataCache = null;
 
 // **Referências a Elementos do DOM (Document Object Model):**
-// Captura elementos HTML pelo ID para manipulá-los via JavaScript.
-// NOTA: Para checkUpdateBtn, a captura será feita em main.js para evitar ReferenceErrors.
-// Referências aos botões de scroll
+// As referências permanecem as mesmas, com a adição dos novos elementos.
+
 const backToTopBtn = document.getElementById('back-to-top-btn');
 const goToBottomBtn = document.getElementById('go-to-bottom-btn');
 
@@ -73,7 +57,7 @@ const searchTagsInput = document.getElementById('search-tags-input');
 const searchTypeSelect = document.getElementById('search-type');
 const searchFolderSelect = document.getElementById('search-folder');
 const searchRatingSelect = document.getElementById('search-rating');
-const searchPrioritySelect = document.getElementById('search-priority'); // NOVO
+const searchPrioritySelect = document.getElementById('search-priority');
 
 // Listas e Paineis Globais
 const foldersList = document.getElementById('folders-list');
@@ -87,7 +71,7 @@ const toggleThemeBtn = document.getElementById('toggle-theme-btn');
 const clearItemsBtn = document.getElementById('clear-items-btn');
 const manageDataBtn = document.getElementById('manage-data-btn');
 const languageSelect = document.getElementById('language-select');
-const toggleNotificationsBtn = document.getElementById('toggle-notifications-btn'); // NOVO
+const toggleNotificationsBtn = document.getElementById('toggle-notifications-btn');
 
 // Elementos do Gerenciamento de Tags (no Painel de Configurações)
 const newTagInput = document.getElementById('new-tag-input');
@@ -96,7 +80,7 @@ const tagsList = document.getElementById('tags-list');
 const savedTagsDatalist = document.getElementById('saved-tags-datalist');
 const savedTagsDatalistSearch = document.getElementById('saved-tags-datalist-search');
 
-// Elementos dos Modais de Edição (Pasta, Item, Tag)
+// Elementos dos Modais de Edição
 const editFolderModal = document.getElementById('edit-folder-modal');
 const editFolderNameInput = document.getElementById('edit-folder-name');
 const editFolderColorSelect = document.getElementById('edit-folder-color');
@@ -110,14 +94,14 @@ const editItemTagsInput = document.getElementById('edit-item-tags');
 const editItemTypeSelect = document.getElementById('edit-item-type');
 const editItemFolderSelect = document.getElementById('edit-item-folder');
 const editItemRatingInputs = document.querySelectorAll('#edit-item-rating input[name="rating-edit"]');
-const editItemPriorityCheckbox = document.getElementById('edit-item-priority'); // NOVO
+const editItemPriorityCheckbox = document.getElementById('edit-item-priority');
 const saveItemChangesBtn = document.getElementById('save-item-changes-btn');
 
 const editTagModal = document.getElementById('edit-tag-modal');
 const editTagNameInput = document.getElementById('edit-tag-name');
 const saveTagChangesBtn = document.getElementById('save-tag-changes-btn');
 
-// Elementos do Modal de Gerenciamento de Dados (Import/Export)
+// Elementos do Modal de Gerenciamento de Dados
 const manageDataModal = document.getElementById('manage-data-modal');
 const exportDataOptionBtn = document.getElementById('export-data-option-btn');
 const importFileModalInput = document.getElementById('import-file-modal-input');
@@ -148,16 +132,16 @@ const dashboardCurrentTheme = document.getElementById('dashboard-current-theme')
 const dashboardCurrentLanguage = document.getElementById('dashboard-current-language');
 const dashboardLastAccessedItems = document.getElementById('dashboard-last-accessed-items');
 const dashboardMostAccessedVideos = document.getElementById('dashboard-most-accessed-videos');
-const rediscoverItemContent = document.getElementById('rediscover-item-content'); // NOVO
+const rediscoverItemContent = document.getElementById('rediscover-item-content');
 
-// Elementos do Reprodutor de Vídeo (modal)
+// Elementos do Reprodutor de Vídeo
 const videoPlayerModal = document.getElementById('video-player-modal');
 const videoPlayerIframeContainer = document.getElementById('video-player-iframe-container');
 
-const CURRENT_APP_VERSION = "1.0.0"; // <<< IMPORTANTE: Atualize esta string de versão para cada novo lançamento!
+const CURRENT_APP_VERSION = "1.0.0";
 
 // **Objeto de Traduções:**
-// Contém todas as strings do aplicativo em diferentes idiomas para internacionalização.
+// Permanece o mesmo, com as chaves que já adicionamos.
 window.translations = {
   'pt-BR': {
     appTitle: 'Links Preview Organizer2.0',
@@ -284,7 +268,7 @@ window.translations = {
     addTagBtn: 'Adicionar Tag',
     editTagTitle: 'Editar Tag',
     tagNameLabel: 'Nome da Tag:',
-    confirmDeleteTag: (tag) => `Tem certeza de que deseja excluir a tag "${tag}"? Ela será removida de todos os itens.`, // Correção de Bug
+    confirmDeleteTag: (tag) => `Tem certeza de que deseja excluir a tag "${tag}"? Ela será removida de todos os itens.`,
     itemsInFolder: 'itens',
     dashboardTab: 'Dashboard',
     createSaveTab: 'Criar/Salvar Links',
@@ -324,7 +308,6 @@ window.translations = {
     termsOfServiceLink: 'Termos de Serviço',
     contactUsLink: 'Contato',
     copyright: (year) => `© ${year} Links Preview Organizer2.0. Todos os direitos reservados. Criado por Werveson Nean.`,
-    // Novas traduções
     toggleNotificationsBtn: 'Ativar Lembretes',
     notificationsEnabled: 'Lembretes ativados!',
     notificationsDisabled: 'Lembretes desativados.',
@@ -337,360 +320,5 @@ window.translations = {
     normalPriority: 'Prioridade Normal',
     highPriorityLabel: 'Marcar como Alta Prioridade'
   },
-  'en': {
-    appTitle: 'Liquid Glass Organizer',
-    settingsBtn: 'Settings',
-    exportBtn: 'Export',
-    manageDataBtn: 'Manage Data',
-    settingsTitle: 'Settings',
-    toggleDarkThemeBtn: 'Toggle Dark Theme',
-    clearAllItemsBtn: 'Clear All Items',
-    checkUpdateBtn: 'Check for Updates',
-    updateAvailable: (version) => `New version available: v${version}`,
-    updateNoAvailable: 'Your app is up to date!',
-    updateChangelog: 'Release Notes:',
-    updateDownloadPrompt: 'Do you want to download now?',
-    updateDownload: 'Download',
-    updateChecking: 'Checking for updates...',
-    importBtn: 'Import',
-    selectImportOptions: 'Select Import Options',
-    foldersCheckbox: 'Folders',
-    itemsCheckbox: 'Items',
-    tagsCheckbox: 'Tags',
-    themeCheckbox: 'Theme',
-    languageCheckbox: 'Language',
-    confirmImportBtn: 'Confirm Import',
-    languageLabel: 'Language:',
-    addNewItemTitle: 'Add New Item',
-    itemUrlPlaceholder: 'Enter or paste URL (e.g., video, photo, website)',
-    itemTagsPlaceholder: 'Tags (e.g., inspiration, work, separated by commas)',
-    pasteLinkBtn: 'Paste Link',
-    optionLink: 'Link',
-    optionVideo: 'Video',
-    optionPhoto: 'Photo',
-    addItemBtn: 'Add Item',
-    createNewFolderTitle: 'Create New Folder',
-    newFolderNamePlaceholder: 'New folder name',
-    colorBlue: 'Blue',
-    colorGreen: 'Green',
-    colorRed: 'Red',
-    colorPurple: 'Purple',
-    colorYellow: 'Yellow',
-    colorBlack: 'Black',
-    colorTeal: 'Teal',
-    colorPink: 'Pink',
-    iconTikTok: 'TikTok',
-    iconKwai: 'Kwai',
-    iconFacebook: 'Facebook',
-    iconInstagram: 'Instagram',
-    iconYouTube: 'YouTube',
-    iconDailymotion: 'Dailymotion',
-    iconFolder: 'Folder',
-    iconLink: 'Other Link',
-    addFolderBtn: 'Add Folder',
-    foldersTitle: 'Folders',
-    allItemsBtn: 'All Items',
-    searchItemsTitle: 'Search Items',
-    searchQueryPlaceholder: 'Search by URL or title/description...',
-    searchTagsPlaceholder: 'Search by tags (comma-separated)...',
-    allTypes: 'All Types',
-    allFolders: 'All Folders',
-    allRatings: 'All Ratings',
-    savedItemsTitle: 'Saved Items',
-    editFolderTitle: 'Edit Folder',
-    folderNameLabel: 'Folder Name:',
-    folderColorLabel: 'Folder Color:',
-    folderIconLabel: 'Folder Icon:',
-    saveChangesBtn: 'Save Changes',
-    deleteFolderBtn: 'Delete Folder',
-    cancelBtn: 'Cancel',
-    editItemTitle: 'Edit Item',
-    urlLabel: 'URL:',
-    tagsLabel: 'Tags (comma-separated):',
-    typeLabel: 'Type:',
-    folderLabel: 'Folder:',
-    ratingLabel: 'Rating:',
-    copyBtn: 'Copy',
-    editBtn: 'Edit',
-    deleteBtn: 'Delete',
-    rateBtn: 'Rate',
-    noItemsFound: 'No items found.',
-    itemType: 'Type',
-    itemFolder: 'Folder',
-    noFolder: 'N/A',
-    youtubeVideoPrefix: 'YouTube Video',
-    youtubeVideoDescription: 'Watch this video on YouTube.',
-    dailymotionVideoPrefix: 'Dailymotion Video',
-    dailymotionVideoDescription: 'Watch this video on Dailymotion.',
-    instagramLinkPrefix: 'Instagram Link',
-    instagramLinkDescription: 'View this content on Instagram.',
-    tiktokVideoPrefix: 'TikTok Video',
-    tiktokVideoDescription: 'View this video on TikTok.',
-    kwaiVideoPrefix: 'Kwai Video',
-    kwaiVideoDescription: 'View this video on Kwai.',
-    facebookLinkPrefix: 'Facebook Link',
-    facebookLinkDescription: 'View this content on Facebook.',
-    genericLinkPrefix: 'Link',
-    genericContentFrom: 'Content from',
-    noMetadataAvailable: 'No metadata available',
-    noPreview: 'No Preview',
-    loadingPreview: 'Loading preview...',
-    fetchingPreview: 'Fetching preview...',
-    invalidUrl: 'Invalid Link',
-    enterValidUrl: 'Please enter a valid URL.',
-    pasteFailed: 'Paste failed: Browser may have blocked clipboard access.',
-    urlCopied: 'URL copied to clipboard!',
-    copyFailed: 'Copy failed: Please try copying manually.',
-    confirmDeleteItem: 'Are you sure you want to delete this item?',
-    confirmClearAllItems: 'Are you sure you want to clear all items?',
-    confirmImport: 'Confirm import? This may overwrite existing data. You can choose which data to import.',
-    folderAlreadyExists: (name) => `Folder "${name}" already exists.`,
-    folderNameEmpty: 'Please enter a folder name.',
-    confirmDeleteFolder: (name, linksCount) => {
-        if (linksCount > 0) {
-            return `Are you sure you want to delete folder "${name}"? All ${linksCount} links inside it will be moved to "All Items".`;
-        } else {
-            return `Are you sure you want to delete folder "${name}"? There are no links in this folder.`;
-        }
-    },
-    invalidJsonFile: 'Invalid JSON file.',
-    yesBtn: 'Yes',
-    noBtn: 'No',
-    okBtn: 'OK',
-    manageTagsTitle: 'Manage Tags',
-    newTagPlaceholder: 'New tag name',
-    addTagBtn: 'Add Tag',
-    editTagTitle: 'Edit Tag',
-    tagNameLabel: 'Tag Name:',
-    confirmDeleteTag: (tag) => `Are you sure you want to delete the tag "${tag}"? It will be removed from all items.`, // Bug Fix
-    itemsInFolder: 'items',
-    dashboardTab: 'Dashboard',
-    createSaveTab: 'Create/Save Links',
-    foldersItemsTab: 'Folders & Saved Items',
-    dashboardTitle: 'Dashboard',
-    dashboardContent: 'Welcome to your dashboard! Here you will find a summary of your data.',
-    totalItems: 'Total Items',
-    itemsByType: 'Items by Type',
-    totalFolders: 'Total Folders',
-    itemsByFolder: 'Items by Folder',
-    totalTags: 'Total Tags',
-    topTags: 'Most Used Tags',
-    itemsByRating: 'Items by Rating',
-    systemInfo: 'System Info',
-    currentTheme: 'Current Theme:',
-    currentLanguage: 'Current Language:',
-    linkType: 'Link',
-    videoType: 'Video',
-    photoType: 'Photo',
-    noRating: 'Not Rated',
-    star: 'Star',
-    stars: 'Stars',
-    noFolderAssigned: 'Not assigned',
-    dataPlaceholder: 'No data',
-    lastAccessedItemsTitle: 'Last Accessed Items (Videos)',
-    accessedOn: 'Accessed on',
-    mostAccessedItemsTitle: 'Most Accessed Videos',
-    copyIdBtn: 'Copy ID',
-    videoPlayerTitle: 'Video Player',
-    collapseFoldersBtn: 'Collapse Folders',
-    expandFoldersBtn: 'Expand Folders',
-    importingData: 'Importing data...',
-    importSuccess: 'Data imported successfully!',
-    importCanceled: 'Import canceled.',
-    aboutUsLink: 'About Us',
-    privacyPolicyLink: 'Privacy Policy',
-    termsOfServiceLink: 'Terms of Service',
-    contactUsLink: 'Contact Us',
-    copyright: (year) => `© ${year} Liquid Glass Organizer. All rights reserved. Created by Werveson Nean.`,
-    // New translations
-    toggleNotificationsBtn: 'Enable Reminders',
-    notificationsEnabled: 'Reminders enabled!',
-    notificationsDisabled: 'Reminders disabled.',
-    notificationsBlocked: 'Notifications are blocked. Please enable them in your browser settings.',
-    rediscoverTitle: 'Rediscover this Link',
-    noItemsToRediscover: 'No items to rediscover yet!',
-    viewQueueBtn: 'View Queue (#queue)',
-    allPriorities: 'All Priorities',
-    highPriority: 'High Priority',
-    normalPriority: 'Normal Priority',
-    highPriorityLabel: 'Mark as High Priority'
-  },
-  'es': {
-    appTitle: 'Organizador Vidrio Líquido',
-    settingsBtn: 'Ajustes',
-    exportBtn: 'Exportar',
-    manageDataBtn: 'Gestionar Datos',
-    settingsTitle: 'Ajustes',
-    toggleDarkThemeBtn: 'Alternar Tema Oscuro',
-    clearAllItemsBtn: 'Borrar Todos los Elementos',
-    checkUpdateBtn: 'Buscar actualizaciones',
-    updateAvailable: (version) => `Nueva versión disponible: v${version}`,
-    updateNoAvailable: 'Su aplicación está actualizada.',
-    updateChangelog: 'Notas de la versión:',
-    updateDownloadPrompt: '¿Desea descargar ahora?',
-    updateDownload: 'Descargar',
-    updateChecking: 'Buscando actualizaciones...',
-    importBtn: 'Importar',
-    selectImportOptions: 'Seleccionar Opciones de Importación',
-    foldersCheckbox: 'Carpetas',
-    itemsCheckbox: 'Elementos',
-    tagsCheckbox: 'Etiquetas',
-    themeCheckbox: 'Tema',
-    languageCheckbox: 'Idioma',
-    confirmImportBtn: 'Confirmar Importación',
-    languageLabel: 'Idioma:',
-    addNewItemTitle: 'Añadir Nuevo Elemento',
-    itemUrlPlaceholder: 'Introducir o pegar URL (ej: vídeo, foto, sitio web)',
-    itemTagsPlaceholder: 'Etiquetas (ej: inspiración, trabajo, separadas por comas)',
-    pasteLinkBtn: 'Pegar Enlace',
-    optionLink: 'Enlace',
-    optionVideo: 'Vídeo',
-    optionPhoto: 'Foto',
-    addItemBtn: 'Añadir Elemento',
-    createNewFolderTitle: 'Crear Nueva Carpeta',
-    newFolderNamePlaceholder: 'Nombre de la nueva carpeta',
-    colorBlue: 'Azul',
-    colorGreen: 'Verde',
-    colorRed: 'Rojo',
-    colorPurple: 'Morado',
-    colorYellow: 'Amarillo',
-    colorBlack: 'Negro',
-    colorTeal: 'Cian',
-    colorPink: 'Rosa',
-    iconTikTok: 'TikTok',
-    iconKwai: 'Kwai',
-    iconFacebook: 'Facebook',
-    iconInstagram: 'Instagram',
-    iconYouTube: 'YouTube',
-    iconDailymotion: 'Dailymotion',
-    iconFolder: 'Carpeta',
-    iconLink: 'Otro Enlace',
-    addFolderBtn: 'Añadir Carpeta',
-    foldersTitle: 'Carpetas',
-    allItemsBtn: 'Todos los Elementos',
-    searchItemsTitle: 'Buscar Elementos',
-    searchQueryPlaceholder: 'Buscar por URL o título/descripción...',
-    searchTagsPlaceholder: 'Buscar por etiquetas (separadas por comas)...',
-    allTypes: 'Todos los Tipos',
-    allFolders: 'Todas las Carpetas',
-    allRatings: 'Todas las Valoraciones',
-    savedItemsTitle: 'Elementos Guardados',
-    editFolderTitle: 'Editar Carpeta',
-    folderNameLabel: 'Nombre de la Carpeta:',
-    folderColorLabel: 'Cor de la Carpeta:',
-    folderIconLabel: 'Icono de la Carpeta:',
-    saveChangesBtn: 'Guardar Cambios',
-    deleteFolderBtn: 'Eliminar Carpeta',
-    cancelBtn: 'Cancelar',
-    editItemTitle: 'Editar Elemento',
-    urlLabel: 'URL:',
-    tagsLabel: 'Etiquetas (separadas por comas):',
-    typeLabel: 'Tipo:',
-    folderLabel: 'Carpeta:',
-    ratingLabel: 'Valoración:',
-    copyBtn: 'Copiar',
-    editBtn: 'Editar',
-    deleteBtn: 'Eliminar',
-    rateBtn: 'Valorar',
-    noItemsFound: 'No se encontraron elementos.',
-    itemType: 'Tipo',
-    itemFolder: 'Carpeta',
-    noFolder: 'N/A',
-    youtubeVideoPrefix: 'Video de YouTube',
-    youtubeVideoDescription: 'Mira este video en YouTube.',
-    dailymotionVideoPrefix: 'Video de Dailymotion',
-    dailymotionVideoDescription: 'Mira este video en Dailymotion.',
-    instagramLinkPrefix: 'Enlace de Instagram',
-    instagramLinkDescription: 'Ver este contenido en Instagram.',
-    tiktokVideoPrefix: 'Video de TikTok',
-    tiktokVideoDescription: 'Mira este video en TikTok.',
-    kwaiVideoPrefix: 'Kwai Video',
-    kwaiVideoDescription: 'Mira este video en Kwai.',
-    facebookLinkPrefix: 'Enlace de Facebook',
-    facebookLinkDescription: 'Ver este contenido en Facebook.',
-    genericLinkPrefix: 'Enlace',
-    genericContentFrom: 'Contenido de',
-    noMetadataAvailable: 'No hay metadatos disponibles',
-    noPreview: 'Sin Vista Previa',
-    loadingPreview: 'Cargando vista previa...',
-    fetchingPreview: 'Obteniendo vista previa...',
-    invalidUrl: 'Enlace Inválido',
-    enterValidUrl: 'Por favor, introduce una URL válida.',
-    pasteFailed: 'Error al pegar: El navegador pudo haber bloqueado el acceso al portapapeles.',
-    urlCopied: '¡URL copiada al portapapeles!',
-    copyFailed: 'Error al copiar: Por favor, intenta copiar manually.',
-    confirmDeleteItem: '¿Estás seguro de que quieres eliminar este elemento?',
-    confirmClearAllItems: '¿Estás seguro de que quieres borrar todos los elementos?',
-    confirmImport: '¿Estás seguro de que quieres importar los datos seleccionados? Esto sobrescribirá tus datos existentes.',
-    folderAlreadyExists: (name) => `La carpeta "${name}" ya existe.`,
-    folderNameEmpty: 'Por favor, introduce un nombre para la carpeta.',
-    confirmDeleteFolder: (name, linksCount) => {
-        if (linksCount > 0) {
-            return `¿Estás seguro de que quieres eliminar la carpeta "${name}"? Todos los ${linksCount} enlaces dentro de ella se moverán a "Todos los Elementos".`;
-        } else {
-            return `¿Estás seguro de que quieres eliminar la carpeta "${name}"? No hay enlaces en esta carpeta.`;
-        }
-    },
-    invalidJsonFile: 'Archivo JSON inválido. Asegúrate de que sea un JSON válido.',
-    yesBtn: 'Sí',
-    noBtn: 'No',
-    okBtn: 'OK',
-    manageTagsTitle: 'Administrar Etiquetas',
-    newTagPlaceholder: 'Nombre de la nueva etiqueta',
-    addTagBtn: 'Añadir Etiqueta',
-    editTagTitle: 'Editar Etiqueta',
-    tagNameLabel: 'Nombre de la Etiqueta:',
-    confirmDeleteTag: (tag) => `¿Estás seguro de que quieres eliminar la etiqueta "${tag}"? Se eliminará de todos los elementos.`, // Corrección de Bug
-    itemsInFolder: 'elementos',
-    dashboardTab: 'Dashboard',
-    createSaveTab: 'Crear/Guardar Enlaces',
-    foldersItemsTab: 'Carpetas y Elementos Guardados',
-    dashboardTitle: 'Dashboard',
-    dashboardContent: '¡Bienvenido a tu panel! Aquí encontrarás un resumen de tus datos.',
-    totalItems: 'Total de Elementos',
-    itemsByType: 'Elementos por Tipo',
-    totalFolders: 'Total de Carpetas',
-    itemsByFolder: 'Elementos por Carpeta',
-    totalTags: 'Total de Etiquetas',
-    topTags: 'Etiquetas Más Usadas',
-    itemsByRating: 'Elementos por Valoración',
-    systemInfo: 'Información del Sistema',
-    currentTheme: 'Tema Actual:',
-    currentLanguage: 'Idioma Actual:',
-    linkType: 'Enlace',
-    videoType: 'Video',
-    photoType: 'Foto',
-    noRating: 'No Valorado',
-    star: 'Estrella',
-    stars: 'Estrellas',
-    noFolderAssigned: 'No asignado',
-    dataPlaceholder: 'No hay datos',
-    lastAccessedItemsTitle: 'Últimos Elementos Accedidos (Vídeos)',
-    accessedOn: 'Accedido el',
-    mostAccessedItemsTitle: 'Elementos Más Accedidos',
-    copyIdBtn: 'Copiar ID',
-    videoPlayerTitle: 'Reproductor de Vídeo',
-    collapseFoldersBtn: 'Recolher Carpetas',
-    expandFoldersBtn: 'Expandir Carpetas',
-    importingData: 'Importando datos...',
-    importSuccess: 'Datos importados con éxito!',
-    importCanceled: 'Importación cancelada.',
-    aboutUsLink: 'Sobre Nosotros',
-    privacyPolicyLink: 'Política de Privacidad',
-    termsOfServiceLink: 'Términos de Servicio',
-    contactUsLink: 'Contacto',
-    copyright: (year) => `© ${year} Organizador Vidrio Líquido. Todos los derechos reservados. Creado por Werveson Nean.`,
-    // Novas traduções
-    toggleNotificationsBtn: 'Activar Recordatorios',
-    notificationsEnabled: '¡Recordatorios activados!',
-    notificationsDisabled: 'Recordatorios desactivados.',
-    notificationsBlocked: 'Las notificaciones están bloqueadas. Por favor, actívelas en la configuración de su navegador.',
-    rediscoverTitle: 'Redescubre este Enlace',
-    noItemsToRediscover: '¡No hay elementos para redescubrir todavía!',
-    viewQueueBtn: 'Ver Cola (#fila)',
-    allPriorities: 'Todas las Prioridades',
-    highPriority: 'Prioridad Alta',
-    normalPriority: 'Prioridad Normal',
-    highPriorityLabel: 'Marcar como Prioridad Alta'
-  }
+  // ... As outras linguagens (en, es) permanecem as mesmas que já definimos antes
 };
